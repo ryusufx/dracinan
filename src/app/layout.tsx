@@ -8,8 +8,8 @@ import { Toaster as Sonner } from "@/components/ui/sonner";
 import { Suspense } from "react";
 
 export const metadata: Metadata = {
-  title: "SekaiDrama - Streaming Drama Pendek",
-  description: "Nonton drama pendek gratis dan tanpa iklan di SekaiDrama.",
+  title: "Dracinan - Streaming Drama Pendek",
+  description: "Nonton drama pendek gratis dan tanpa iklan di Dracinan.",
 };
 
 export default function RootLayout({
