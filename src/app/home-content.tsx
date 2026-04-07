@@ -3,16 +3,18 @@
 import { PlatformSelector } from "@/components/PlatformSelector";
 import { DramaSection } from "@/components/DramaSection";
 import { ReelShortSection } from "@/components/ReelShortSection";
+import { ShortMaxHome } from "@/components/ShortMaxHome";
 import { NetShortHome } from "@/components/NetShortHome";
 import { MeloloHome } from "@/components/MeloloHome";
-import { FlickReelsHome } from "@/components/FlickReelsHome";
+
 import { FreeReelsHome } from "@/components/FreeReelsHome";
+import { DramaNovaHome } from "@/components/DramaNovaHome";
 import { useLatestDramas, useTrendingDramas, useDubindoDramas } from "@/hooks/useDramas";
 import { usePlatform } from "@/hooks/usePlatform";
 import { InfiniteDramaSection } from "@/components/InfiniteDramaSection";
 
 export default function HomeContent() {
-  const { isDramaBox, isReelShort, isNetShort, isMelolo, isFlickReels, isFreeReels } = usePlatform();
+  const { isDramaBox, isReelShort, isShortMax, isNetShort, isMelolo, isFreeReels, isDramaNova } = usePlatform();
 
   // Fetch data for all DramaBox sections
   // const { data: popularDramas, isLoading: loadingPopular, error: errorPopular, refetch: refetchPopular } = useForYouDramas(); // REMOVED as requested (replaced by infinite scroll)
@@ -66,6 +68,13 @@ export default function HomeContent() {
         </div>
       )}
 
+      {/* ShortMax Content */}
+      {isShortMax && (
+        <div className="container mx-auto px-4 py-6 space-y-8">
+          <ShortMaxHome />
+        </div>
+      )}
+
       {/* NetShort Content */}
       {isNetShort && (
         <div className="container mx-auto px-4 py-6 space-y-8">
@@ -80,17 +89,19 @@ export default function HomeContent() {
         </div>
       )}
 
-      {/* FlickReels Content */}
-      {isFlickReels && (
-        <div className="container mx-auto px-4 py-6 space-y-8">
-          <FlickReelsHome />
-        </div>
-      )}
+
 
       {/* FreeReels Content */}
       {isFreeReels && (
         <div className="container mx-auto px-4 py-6 space-y-8">
           <FreeReelsHome />
+        </div>
+      )}
+
+      {/* DramaNova Content */}
+      {isDramaNova && (
+        <div className="container mx-auto px-4 py-6 space-y-8">
+          <DramaNovaHome />
         </div>
       )}
     </main>

@@ -76,3 +76,47 @@ src/
 ├── types/                  # TypeScript interfaces & types definitions
 └── styles/                 # Global CSS & Tailwind configuration
 ```
+
+## Kustomisasi
+
+### Menghapus Popup Donasi QRIS
+
+Jika Anda ingin menghapus popup donasi yang muncul di halaman detail, Anda dapat memberikan komentar pada pemanggilan komponen `QrisDonationPopup` di dalam file `src/app/detail/layout.tsx`.
+
+Ubah kode berikut:
+
+```tsx
+import QrisDonationPopup from '@/components/QrisDonationPopup';
+
+export default function DetailLayout({
+  children,
+}: {
+  children: React.ReactNode;
+}) {
+  return (
+    <>
+      {children}
+      <QrisDonationPopup />
+    </>
+  );
+}
+```
+
+Menjadi seperti ini:
+
+```tsx
+import QrisDonationPopup from '@/components/QrisDonationPopup';
+
+export default function DetailLayout({
+  children,
+}: {
+  children: React.ReactNode;
+}) {
+  return (
+    <>
+      {children}
+      {/* <QrisDonationPopup /> */}
+    </>
+  );
+}
+```

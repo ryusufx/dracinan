@@ -77,6 +77,34 @@ export default function DramaBoxWatchPage() {
     return unique.sort((a, b) => b - a);
   }, [defaultCdn]);
 
+  // Get subtitle URL for Indonesian language when subtitle is separate
+  const subtitleUrl = useMemo(() => {
+    if (!currentEpisodeData) return "";
+    if (currentEpisodeData.useMultiSubtitle !== 1) return "";
+    if (!currentEpisodeData.subLanguageVoList?.length) return "";
+
+    // Priority: find "in" (Indonesian), then isDefault === 1, then first non-"none"
+    const indo = currentEpisodeData.subLanguageVoList.find(
+      (s) => s.captionLanguage === "in" && s.url
+    );
+    if (indo) return indo.url;
+
+    const defaultSub = currentEpisodeData.subLanguageVoList.find(
+      (s) => s.isDefault === 1 && s.url
+    );
+    if (defaultSub) return defaultSub.url;
+
+    const first = currentEpisodeData.subLanguageVoList.find(
+      (s) => s.captionLanguage !== "none" && s.url
+    );
+    return first?.url || "";
+  }, [currentEpisodeData]);
+
+  const proxiedSubtitleUrl = useMemo(() => {
+    if (!subtitleUrl) return "";
+    return `/api/proxy/video?url=${encodeURIComponent(subtitleUrl)}`;
+  }, [subtitleUrl]);
+
   // Keep selected quality valid for the current episode
   useEffect(() => {
     if (!availableQualities.length) return;
@@ -86,8 +114,8 @@ export default function DramaBoxWatchPage() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [availableQualities.join(",")]);
 
-  // Get video URL with selected quality
-  const getVideoUrl = () => {
+  // Build the video URL: decrypt the encrypted videoPath via our proxy API
+  const videoUrl = useMemo(() => {
     if (!currentEpisodeData || !defaultCdn) return "";
 
     const videoPath =
@@ -95,8 +123,12 @@ export default function DramaBoxWatchPage() {
       defaultCdn.videoPathList.find((v) => v.isDefault === 1) ||
       defaultCdn.videoPathList[0];
 
-    return videoPath?.videoPath || "";
-  };
+    const rawUrl = videoPath?.videoPath || "";
+    if (!rawUrl) return "";
+
+    // Route through our decrypt-stream proxy which streams the decrypted video
+    return `/api/dramabox/decrypt-stream?url=${encodeURIComponent(rawUrl)}`;
+  }, [currentEpisodeData, defaultCdn, quality]);
 
   const handleVideoEnded = () => {
     if (!episodes) return;
@@ -105,6 +137,75 @@ export default function DramaBoxWatchPage() {
       handleEpisodeChange(next, true);
     }
   };
+
+  // Manual Subtitle Injection & Enforcement (same as FreeReels/NetShort)
+  useEffect(() => {
+    const video = videoRef.current;
+    if (!video) return;
+
+    const injectTrack = () => {
+      if (!proxiedSubtitleUrl) return;
+
+      const tracks = Array.from(video.getElementsByTagName('track'));
+      const existing = tracks.find(t => t.label === 'Indonesia' && t.srclang === 'id');
+
+      if (existing) {
+        if (existing.src === proxiedSubtitleUrl) return;
+        video.removeChild(existing);
+      }
+
+      const track = document.createElement('track');
+      track.kind = 'subtitles';
+      track.label = 'Indonesia';
+      track.srclang = 'id';
+      track.default = true;
+      track.src = proxiedSubtitleUrl;
+
+      track.onload = () => {
+        if (track.track) track.track.mode = 'showing';
+      };
+
+      video.appendChild(track);
+    };
+
+    const enforce = () => {
+      const tracks = Array.from(video.textTracks);
+      const indo = tracks.find(t => t.label === 'Indonesia' || t.language === 'id');
+      if (indo && indo.mode !== 'showing') {
+        indo.mode = 'showing';
+      }
+    };
+
+    injectTrack();
+
+    video.addEventListener('loadeddata', enforce);
+    video.addEventListener('canplay', enforce);
+    video.addEventListener('playing', enforce);
+    video.addEventListener('seeked', enforce);
+
+    // Polling for first 2 seconds (race condition fix)
+    let retries = 0;
+    const poll = setInterval(() => {
+      injectTrack();
+      enforce();
+      retries++;
+      if (retries > 10) clearInterval(poll);
+    }, 200);
+
+    return () => {
+      video.removeEventListener('loadeddata', enforce);
+      video.removeEventListener('canplay', enforce);
+      video.removeEventListener('playing', enforce);
+      video.removeEventListener('seeked', enforce);
+      clearInterval(poll);
+
+      try {
+        const tracks = Array.from(video.getElementsByTagName('track'));
+        const current = tracks.find(t => t.src === proxiedSubtitleUrl);
+        if (current) video.removeChild(current);
+      } catch (e) {}
+    };
+  }, [proxiedSubtitleUrl]);
 
   // Handle both new and legacy API formats
   let book: { bookId: string; bookName: string } | null = null;
@@ -157,7 +258,7 @@ export default function DramaBoxWatchPage() {
             className="flex items-center gap-2 text-white/90 hover:text-white transition-colors p-2 -ml-2 rounded-full hover:bg-white/10"
           >
             <ChevronLeft className="w-6 h-6" />
-            <span className="text-primary font-bold hidden sm:inline shadow-black drop-shadow-md">DRACINAN</span>
+            <span className="text-primary font-bold hidden sm:inline shadow-black drop-shadow-md">SekaiDrama</span>
           </Link>
           
           <div className="text-center flex-1 px-4 min-w-0">
@@ -208,7 +309,7 @@ export default function DramaBoxWatchPage() {
             {currentEpisodeData ? (
               <video
                 ref={videoRef}
-                src={getVideoUrl()}
+                src={videoUrl}
                 controls
                 autoPlay
                 onEnded={handleVideoEnded}

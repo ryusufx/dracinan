@@ -37,6 +37,11 @@ export async function GET(request: NextRequest) {
         });
     }
 
+    // Also check for direct 'books' array inside 'cell'
+    if (data?.cell?.books && Array.isArray(data.cell.books)) {
+        books = [...books, ...data.cell.books];
+    }
+
     // Also check for direct 'books' array in data just in case structure varies
     if (data?.books && Array.isArray(data.books)) {
         books = [...books, ...data.books];

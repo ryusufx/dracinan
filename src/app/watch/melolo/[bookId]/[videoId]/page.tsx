@@ -44,50 +44,72 @@ export default function MeloloWatchPage() {
 
   // Process video qualities
   const qualities = useMemo(() => {
-    if (!rawVideoModel) return [];
+    const getSafeUrl = (urlStr: string) => {
+      if (!urlStr) return "";
+      if (urlStr.startsWith("http")) return urlStr;
+      try {
+        const decoded = atob(urlStr);
+        if (decoded.startsWith("http")) return decoded;
+      } catch (e) {}
+      return urlStr;
+    };
+
+    if (!rawVideoModel && !streamData?.data?.main_url) return [];
+    
     try {
-      const parsedModel = JSON.parse(rawVideoModel);
-      const videoList = parsedModel.video_list;
-      if (!videoList) return [];
-
+      let parsedModel = null;
+      if (rawVideoModel) {
+        parsedModel = typeof rawVideoModel === "string" ? JSON.parse(rawVideoModel) : rawVideoModel;
+      }
+      const videoList = parsedModel?.video_list;
       const availableQualities: VideoQuality[] = [];
-      const qualityMap: Record<string, string> = {
-        video_1: "240p",
-        video_2: "360p",
-        video_3: "480p",
-        video_4: "540p",
-        video_5: "720p",
-      };
 
-      Object.entries(videoList).forEach(([key, value]: [string, any]) => {
-        if (value?.main_url) {
-          try {
-             // Try to decode if base64, otherwise keep as is
-             const decoded = atob(value.main_url);
-             // Basic check if it looks like a URL
-            const url = decoded.startsWith("http") ? decoded : value.main_url;
-            
+      if (videoList) {
+        const qualityMap: Record<string, string> = {
+          video_1: "240p",
+          video_2: "360p",
+          video_3: "480p",
+          video_4: "540p",
+          video_5: "720p",
+        };
+
+        Object.entries(videoList).forEach(([key, value]: [string, any]) => {
+          const finalUrl = value?.main_url_decoded || getSafeUrl(value?.main_url);
+          if (finalUrl) {
             availableQualities.push({
-              name: qualityMap[key] || key,
-              url: url
-            });
-          } catch (e) {
-             // Fallback if not base64
-             availableQualities.push({
-              name: qualityMap[key] || key,
-              url: value.main_url
+              name: value?.definition || qualityMap[key] || key,
+              url: finalUrl,
             });
           }
-        }
-      });
-      
-      // Sort qualities (highest resolution first assumed by key order, or we can just reverse)
-      return availableQualities.reverse();
+        });
+
+        // Sort qualities from highest to lowest resolution
+        availableQualities.sort((a, b) => {
+          const parseRes = (name: string) => parseInt(name.replace(/[^0-9]/g, "")) || 0;
+          return parseRes(b.name) - parseRes(a.name);
+        });
+      }
+
+      // Fallback to data.main_url if no qualities extracted
+      if (availableQualities.length === 0 && streamData?.data?.main_url) {
+        availableQualities.push({
+          name: "Default",
+          url: getSafeUrl(streamData.data.main_url),
+        });
+      }
+
+      return availableQualities;
     } catch (e) {
       console.error("Error parsing video model", e);
+      if (streamData?.data?.main_url) {
+        return [{
+          name: "Default",
+          url: getSafeUrl(streamData.data.main_url),
+        }];
+      }
       return [];
     }
-  }, [rawVideoModel]);
+  }, [rawVideoModel, streamData]);
 
   // Set default quality
   useEffect(() => {
@@ -156,7 +178,7 @@ export default function MeloloWatchPage() {
             className="flex items-center gap-2 text-white/90 hover:text-white transition-colors p-2 -ml-2 rounded-full hover:bg-white/10"
           >
             <ChevronLeft className="w-6 h-6" />
-            <span className="text-primary font-bold hidden sm:inline shadow-black drop-shadow-md">DRACINAN</span>
+            <span className="text-primary font-bold hidden sm:inline shadow-black drop-shadow-md">SekaiDrama</span>
           </Link>
 
           <div className="text-center flex-1 px-4 min-w-0">

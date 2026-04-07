@@ -29,6 +29,7 @@ fetch_debug.js
 test_vtt.js
 DEPLOY_VPS.md
 .vscode
+dramanova_notes.md
 
 # local env files
 .env

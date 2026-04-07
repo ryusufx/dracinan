@@ -66,7 +66,7 @@ export interface MeloloStreamResponse {
   code: number;
   data: {
     main_url: string;
-    video_model: string; // JSON string containing more details if needed
+    video_model: string | any; // JSON string or object containing more details if needed
     [key: string]: any;
   };
 }
